@@ -109,13 +109,13 @@ void audio_preprocessing_thread(Ring_Buffer<Audio_Segment, true, AUDIO_BUFFER_SI
     tsrt_status_code status;
     bool first_segment = true;
 
-    // for aligning timestamps with audio segments as they are processed
-    Ring_Buffer<std::chrono::system_clock::time_point, false, AUDIO_BUFFER_SIZE> timestamp_ring_buffer;
-    std::chrono::system_clock::time_point last_timestamp = std::chrono::system_clock::now();
-
     // audio_segment for passing onto the next stage of the pipeline
     Audio_Segment full_audio_segment;
     full_audio_segment.lazy_initialize(SAMPLES_PER_SEGMENT);
+
+    // keep track of previous half segments timestamp, its the timestamp for the current full segment
+    std::chrono::system_clock::time_point current_timestamp = std::chrono::system_clock::now();
+    std::chrono::system_clock::time_point last_timestamp = std::chrono::system_clock::now();
 
     while (engine.is_running()) {
         while (!engine.is_recording()) {
@@ -132,8 +132,7 @@ void audio_preprocessing_thread(Ring_Buffer<Audio_Segment, true, AUDIO_BUFFER_SI
         Audio_Segment latest_half_segment = std::move(latest_half_segment_opt.value());
 
         // assign new timestamp and push to ring buffer for alignment after processing
-        last_timestamp = latest_half_segment.get_timestamp();
-        timestamp_ring_buffer.push(last_timestamp);
+        current_timestamp = latest_half_segment.get_timestamp();
 
         status = audio_tsrt.preprocess_audio_segment(latest_half_segment.get_audio());
         if (status != SUCCESS) 
@@ -148,12 +147,9 @@ void audio_preprocessing_thread(Ring_Buffer<Audio_Segment, true, AUDIO_BUFFER_SI
 
         // finish the audio_segments buffer by combining the previous segment with the current one
         memcpy(full_audio_segment.get_midpoint(), latest_half_segment.get_audio(), SAMPLES_PER_HALF_SEGMENT * sizeof(float));
-
-        std::optional<std::chrono::system_clock::time_point> timestamp_opt = timestamp_ring_buffer.pop();
-        if (!timestamp_opt.has_value())
-            throw Tsrt_Exception(UNKNOWN_ERROR, "Timestamp ring buffer is empty", std::chrono::system_clock::now(), __FILE__, __LINE__);
         
-        full_audio_segment.set_timestamp(timestamp_opt.value());
+        full_audio_segment.set_timestamp(last_timestamp);
+        last_timestamp = current_timestamp;
         
         engine.push_to_audio_buffer(std::move(full_audio_segment));
 

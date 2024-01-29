@@ -23,30 +23,19 @@ void avframe_deleter(AVFrame* avframe) {
         av_frame_free(&avframe);
 }
 
-void Audio_tsrt::init_avframes() {
-    avframe_filter_in.reset(av_frame_alloc());
-    if (!avframe_filter_in) {
-        throw Tsrt_Exception(INSUFFICIENT_MEMORY, "Error allocating memory for avframe_filter_in", std::chrono::system_clock::now(), __FILE__, __LINE__);
-    }
-
-    avframe_filter_out.reset(av_frame_alloc());
-    if (!avframe_filter_out) {
-        throw Tsrt_Exception(INSUFFICIENT_MEMORY, "Error allocating memory for avframe_filter_out", std::chrono::system_clock::now(), __FILE__, __LINE__);
+void Audio_tsrt::init_avframe() {
+    avframe_filter.reset(av_frame_alloc());
+    if (!avframe_filter) {
+        throw Tsrt_Exception(INSUFFICIENT_MEMORY, "Error allocating memory for avframe_filter", std::chrono::system_clock::now(), __FILE__, __LINE__);
     }
 
     // avframe.channels and avframe.channel_layout are apparently deprecated
     // but it doesn't work with the what the documentation says to use instead
-    avframe_filter_in->channels = 1;
-    avframe_filter_in->channel_layout = AV_CH_LAYOUT_MONO;
-    avframe_filter_in->format = AV_SAMPLE_FMT_FLT;
-    avframe_filter_in->sample_rate = SAMPLE_RATE;
-    avframe_filter_in->nb_samples = SAMPLES_PER_HALF_SEGMENT;
-
-    avframe_filter_out->channels = 1;
-    avframe_filter_out->channel_layout = AV_CH_LAYOUT_MONO;
-    avframe_filter_out->format = AV_SAMPLE_FMT_FLT;
-    avframe_filter_out->sample_rate = SAMPLE_RATE;
-    avframe_filter_out->nb_samples = SAMPLES_PER_HALF_SEGMENT;
+    avframe_filter->channels = 1;
+    avframe_filter->channel_layout = AV_CH_LAYOUT_MONO;
+    avframe_filter->format = AV_SAMPLE_FMT_FLT;
+    avframe_filter->sample_rate = SAMPLE_RATE;
+    avframe_filter->nb_samples = SAMPLES_PER_HALF_SEGMENT;
 }
 
 void Audio_tsrt::handle_ffmpeg_errors(std::function<int()> bound_func, const std::string& error_context, std::string file, int line) {
@@ -120,8 +109,7 @@ void stream_deleter(PaStream* stream) {
 
 Audio_tsrt::Audio_tsrt() :
     stream{nullptr, stream_deleter},
-    avframe_filter_in{nullptr, avframe_deleter},
-    avframe_filter_out{nullptr, avframe_deleter},
+    avframe_filter{nullptr, avframe_deleter},
     avfilter_graph{nullptr, avfilter_graph_deleter},
     src_ctx{nullptr},
     sink_ctx{nullptr} {
@@ -135,13 +123,13 @@ Audio_tsrt::Audio_tsrt() :
     input_parameters.device = Pa_GetDefaultInputDevice();
     if (input_parameters.device == paNoDevice)
         throw Tsrt_Exception(IO_ERROR, "Error: No default input device", std::chrono::system_clock::now(), __FILE__, __LINE__);
-    const PaDeviceInfo* input_device_info = Pa_GetDeviceInfo(input_parameters.device);
+    const PaDeviceInfo* input_devicefo = Pa_GetDeviceInfo(input_parameters.device);
 
-    if (input_device_info == nullptr)
+    if (input_devicefo == nullptr)
         throw Tsrt_Exception(IO_ERROR, "Error: No input device found", std::chrono::system_clock::now(), __FILE__, __LINE__);
     input_parameters.channelCount = 1;
     input_parameters.sampleFormat = paFloat32;
-    input_parameters.suggestedLatency = input_device_info->defaultLowInputLatency;
+    input_parameters.suggestedLatency = input_devicefo->defaultLowInputLatency;
     input_parameters.hostApiSpecificStreamInfo = nullptr;
 
     PaStream* raw_stream;
@@ -151,7 +139,7 @@ Audio_tsrt::Audio_tsrt() :
     stream.reset(raw_stream);
 
     init_avfilter_graph();
-    init_avframes();
+    init_avframe();
     av_log_set_callback(ffmpeg_log_callback);
 }
 
@@ -182,20 +170,12 @@ tsrt_status_code Audio_tsrt::read_audio_segment(float* segment, int segment_size
 tsrt_status_code Audio_tsrt::preprocess_audio_segment(float* segment) {
     int ret_code;
 
-    avframe_filter_in->data[0] = reinterpret_cast<uint8_t*>(segment);
-    handle_ffmpeg_errors([&]() -> int { return av_buffersrc_add_frame_flags(src_ctx, avframe_filter_in.get(), AV_BUFFERSRC_FLAG_PUSH); }, "Error adding frame to filter", __FILE__, __LINE__);
-    ret_code = av_buffersink_get_frame(sink_ctx, avframe_filter_out.get());
+    avframe_filter->data[0] = reinterpret_cast<uint8_t*>(segment);
+    handle_ffmpeg_errors([&]() -> int { return av_buffersrc_add_frame_flags(src_ctx, avframe_filter.get(), AV_BUFFERSRC_FLAG_PUSH); }, "Error adding frame to filter", __FILE__, __LINE__);
     /*
     The current filters being used will always return a frame, so this is not necessary.
-    However, if the filters are changed, this will need to be uncommented. Combine
-    with the next if statement to get the correct behavior.
-
-    if (ret_code == AVERROR(EAGAIN))
-        return TRY_AGAIN;
-    else
+    However, if the filters are changed, this will need to be revised.
     */
-    if (ret_code < 0)
-        handle_ffmpeg_errors([&]() -> int { return ret_code; }, "Error adding frame to filter", __FILE__, __LINE__);
 
     return SUCCESS;
 }

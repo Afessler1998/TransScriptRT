@@ -48,8 +48,7 @@ class Audio_tsrt {
 private:
 
     std::unique_ptr<PaStream, decltype(&stream_deleter)> stream;
-    std::unique_ptr<AVFrame, decltype(&avframe_deleter)> avframe_filter_in;
-    std::unique_ptr<AVFrame, decltype(&avframe_deleter)> avframe_filter_out;
+    std::unique_ptr<AVFrame, decltype(&avframe_deleter)> avframe_filter;
     std::unique_ptr<AVFilterGraph, decltype(&avfilter_graph_deleter)> avfilter_graph;
     // ctx's outside of init_avfilter_graph() because preprocess_audio() reads them
     // the other filters contexts are not needed outside of init_avfilter_graph()
@@ -66,9 +65,9 @@ private:
     Audio_tsrt();
 
     /**
-     * @brief Initialize the AVFrames for input and ouput to the AVFilterGraph
+     * @brief Initialize the AVFrames for the AVFilterGraph
     */
-    void init_avframes();
+    void init_avframe();
 
     /**
      * @brief Initialize the AVFilterGraph
