@@ -60,6 +60,8 @@ void audio_recording_thread(Ring_Buffer<Audio_Segment, true, AUDIO_BUFFER_SIZE>&
             }
         }
 
+        audio_segment.get_timestamp() = std::chrono::system_clock::now();
+
         status = audio_tsrt.read_audio_segment(audio_segment.get_audio(), SAMPLES_PER_HALF_SEGMENT);
         if (status != SUCCESS) {
             if (err_on_last_iteration)
@@ -68,8 +70,6 @@ void audio_recording_thread(Ring_Buffer<Audio_Segment, true, AUDIO_BUFFER_SIZE>&
             err_on_last_iteration = true;
             continue;
         }
-
-        audio_segment.get_timestamp() = std::chrono::system_clock::now();
 
         shared_audio_ring_buffer.push(std::move(audio_segment));
 
@@ -88,22 +88,17 @@ void audio_recording_thread(Ring_Buffer<Audio_Segment, true, AUDIO_BUFFER_SIZE>&
 }
 
 /**
- * @brief Handles the asynchronous audio processing pipeline.
+ * @brief Handles audio preprocessing using FFmpeg filter graphs.
  *
- * The audio preprocessing thread operates asynchronously with respect to the audio capture thread.
- * It retrieves audio segments from a shared Ring_Buffer, which have been timestamped by the recording thread.
- * The audio data is then fed into an FFmpeg filter graph for processing. Due to the nature of FFmpeg,
- * the output from the processed audio might not be immediately available. Therefore, the thread concurrently
- * feeds new data into the filter graph and awaits the processed output. This thread ensures synchronization 
- * of the audio data with its respective timestamps by using an additional Ring_Buffer. When the FFmpeg filter 
- * graph releases a processed audio segment, the thread aligns it with the corresponding timestamp and then
- * makes it available to the Script_Engine for further analysis. This strategy helps maintain the integrity
- * of audio data synchronization throughout the processing pipeline and accommodates any latency introduced
- * by batched processing in FFmpeg.
+ * This function operates by continuously retrieving audio segments from a shared Ring_Buffer,
+ * timestamped by the recording thread. The audio segments are then processed in-place
+ * using an FFmpeg filter graph. It ensures synchronization of audio data with timestamps,
+ * making the processed audio available for further analysis.
  *
  * @param shared_audio_ring_buffer A thread-safe shared ring buffer from which raw audio segments are retrieved.
  */
 void audio_preprocessing_thread(Ring_Buffer<Audio_Segment, true, AUDIO_BUFFER_SIZE>& shared_audio_ring_buffer) {
+    try {
     Script_Engine& engine = Script_Engine::get_instance();
     Audio_tsrt& audio_tsrt = Audio_tsrt::get_instance();
     tsrt_status_code status;
@@ -135,7 +130,7 @@ void audio_preprocessing_thread(Ring_Buffer<Audio_Segment, true, AUDIO_BUFFER_SI
         current_timestamp = latest_half_segment.get_timestamp();
 
         status = audio_tsrt.preprocess_audio_segment(latest_half_segment.get_audio());
-        if (status != SUCCESS) 
+        if (status != SUCCESS)
             throw Tsrt_Exception(UNKNOWN_ERROR, "Error preprocessing audio segment", std::chrono::system_clock::now(), __FILE__, __LINE__);
 
         // skip the rest on the first segment since there is no previous segment to combine with
@@ -156,6 +151,13 @@ void audio_preprocessing_thread(Ring_Buffer<Audio_Segment, true, AUDIO_BUFFER_SI
         // copy half segment to beginning of full segment for next iteration
         full_audio_segment.reset_audio();
         memcpy(full_audio_segment.get_audio(), latest_half_segment.get_audio(), SAMPLES_PER_HALF_SEGMENT * sizeof(float));
+    }
+    } catch(const Tsrt_Exception) {
+        throw;
+    } catch(const std::exception) {
+        throw;
+    } catch(...) {
+        throw;
     }
 }
 
