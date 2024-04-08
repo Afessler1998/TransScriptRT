@@ -1,6 +1,8 @@
 #ifndef constants_config_tsrt_h
 #define constants_config_tsrt_h
 
+#include <cstddef>
+
 // General constants
 #define THREAD_SLEEP_MS 5
 

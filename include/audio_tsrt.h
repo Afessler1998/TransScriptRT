@@ -18,8 +18,6 @@ extern "C" {
 #include <libavfilter/avfilter.h>
 #include <libavformat/avformat.h>
 #include <libavutil/avutil.h>
-// explicit IID declaration to get around linker error
-extern const IID IID_ICodecAPI;
 }
 
 /**

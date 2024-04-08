@@ -2,6 +2,7 @@
 #define ring_buffer_tsrt_h
 
 #include "audio_segment_tsrt.h"
+#include "constants_config_tsrt.h"
 
 #include <cstddef>
 #include <memory>

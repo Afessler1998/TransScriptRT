@@ -53,7 +53,7 @@ public:
      * 
      * @return The message of the exception.
     */
-    virtual const char* Tsrt_Exception::what() const noexcept {
+    virtual const char* what() const noexcept {
         return message.c_str();
     }
 
@@ -62,7 +62,7 @@ public:
      * 
      * @return The status status_code of the exception.
     */
-    tsrt_status_code Tsrt_Exception::get_status_code() const noexcept {
+    tsrt_status_code get_status_code() const noexcept {
         return status_code;
     }
 
@@ -71,7 +71,7 @@ public:
      * 
      * @return The timestamp of the exception.
     */
-    std::chrono::system_clock::time_point Tsrt_Exception::get_timestamp() const noexcept {
+    std::chrono::system_clock::time_point get_timestamp() const noexcept {
         return timestamp;
     }
 
@@ -80,7 +80,7 @@ public:
      * 
      * @return The filename of the exception.
     */
-    std::string Tsrt_Exception::get_filename() const noexcept {
+    std::string get_filename() const noexcept {
         return filename;
     }
 
@@ -89,7 +89,7 @@ public:
      * 
      * @return The line number of the exception.
     */
-    int Tsrt_Exception::get_line_number() const noexcept {
+    int get_line_number() const noexcept {
         return line_number;
     }
 };

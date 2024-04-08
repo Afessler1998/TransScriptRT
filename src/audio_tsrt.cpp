@@ -13,9 +13,6 @@ extern "C" {
 #include <libavutil/frame.h>
 #include <libavfilter/buffersrc.h>
 #include <libavfilter/buffersink.h>
-// explicit IID definition to get around linker error
-const IID IID_ICodecAPI = 
-{ 0x901db4c7, 0x31ce, 0x41a2, { 0x85, 0xdc, 0x8f, 0xa0, 0xbf, 0x41, 0xb8, 0xda } };
 }
 
 void avframe_deleter(AVFrame* avframe) {

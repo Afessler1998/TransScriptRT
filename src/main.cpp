@@ -297,7 +297,7 @@ int main() {
         engine.enable_emotion_recognition();
         engine.start_engine();
         engine.start_recording();
-
+        
         auto shared_audio_ring_buffer = std::make_shared<Ring_Buffer<Audio_Segment, true, AUDIO_BUFFER_SIZE>>();
 
         std::vector<std::function<void()>> tasks;

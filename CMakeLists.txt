@@ -23,123 +23,32 @@ add_executable(${PROJECT_NAME}
   src/logger_tsrt.cpp 
   src/script_engine_tsrt.cpp)
 
-# Set the correct triplet for vcpkg
-set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "VCPKG Target Triplet to use")
-
 # Set and link transSriptRT modules
 set(TRANSSCRIPTRT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(${PROJECT_NAME} PRIVATE ${TRANSSCRIPTRT_INCLUDE_DIR})
 
-# Set and Link sdplog
-set(SPDLOG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/include")
-set(SPDLOG_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/lib")
-set(SPDLOG_LIBRARY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/debug/lib")
-target_include_directories(${PROJECT_NAME} PRIVATE ${SPDLOG_INCLUDE_DIR})
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-  target_link_libraries(${PROJECT_NAME} PRIVATE ${SPDLOG_LIBRARY_DEBUG}/spdlogd.lib)
-else()
-  target_link_libraries(${PROJECT_NAME} PRIVATE ${SPDLOG_LIBRARY}/spdlog.lib)
-endif()
+# pkg-config
+find_package(PkgConfig REQUIRED)
 
-# Set and Link PortAudio
-set(PORTAUDIO_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/include")
-set(PORTAUDIO_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/lib")
-set(PORTAUDIO_LIBRARY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/debug/lib")
-target_include_directories(${PROJECT_NAME} PRIVATE ${PORTAUDIO_INCLUDE_DIR})
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-  target_link_libraries(${PROJECT_NAME} PRIVATE ${PORTAUDIO_LIBRARY_DEBUG}/portaudio.lib)
-else()
-  target_link_libraries(${PROJECT_NAME} PRIVATE ${PORTAUDIO_LIBRARY}/portaudio.lib)
-endif()
+# spdlog
+find_package(spdlog CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog)
 
-# Link against system libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE bcrypt ws2_32 Secur32)
+# fmt
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt)
 
-# Set and link Windows Media Foundation
-set(MF_LIB_DIR "C:/Program Files (x86)/Windows Kits/10/Lib/10.0.22621.0/um/x64")
-set(MF_INCLUDE_DIR "C:/Program Files (x86)/Windows Kits/10/Include/10.0.22621.0/um")
-target_include_directories(${PROJECT_NAME} PRIVATE ${MF_INCLUDE_DIR})
-target_link_libraries(${PROJECT_NAME} PRIVATE 
-  ${MF_LIB_DIR}/Mfplat.lib
-  ${MF_LIB_DIR}/Mfuuid.lib
-  ${MF_LIB_DIR}/Mfreadwrite.lib
-)
+# TBB
+find_package(TBB CONFIG REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE TBB::tbb TBB::tbbmalloc)
 
-# Set and Link FMTs
-set(FMT_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/include")
-set(FMT_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/lib")
-set(FMT_LIBRARY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/debug/lib")
-target_include_directories(${PROJECT_NAME} PRIVATE ${FMT_INCLUDE_DIR})
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-  target_link_libraries(${PROJECT_NAME} PRIVATE ${FMT_LIBRARY_DEBUG}/fmtd.lib)
-else()
-  target_link_libraries(${PROJECT_NAME} PRIVATE ${FMT_LIBRARY}/fmt.lib)
-endif()
+# PortAudio
+pkg_check_modules(PORTAUDIO REQUIRED IMPORTED_TARGET portaudio-2.0)
+target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::PORTAUDIO)
 
-# Set and Link FFmpeg
-set(FFMPEG_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/include")
-set(FFMPEG_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/lib")
-set(FFMPEG_LIBRARY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/debug/lib")
-target_include_directories(${PROJECT_NAME} PRIVATE ${FFMPEG_INCLUDE_DIR})
-if (CMAKE_BUILD_TYPE MATCHES Debug)
-  target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${FFMPEG_LIBRARY_DEBUG}/avcodec.lib
-    ${FFMPEG_LIBRARY_DEBUG}/avfilter.lib
-    ${FFMPEG_LIBRARY_DEBUG}/avformat.lib
-    ${FFMPEG_LIBRARY_DEBUG}/avutil.lib
-    ${FFMPEG_LIBRARY_DEBUG}/swresample.lib
-    ${FFMPEG_LIBRARY_DEBUG}/swscale.lib
-  )
-else()
-  target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${FFMPEG_LIBRARY}/avcodec.lib
-    ${FFMPEG_LIBRARY}/avfilter.lib
-    ${FFMPEG_LIBRARY}/avformat.lib
-    ${FFMPEG_LIBRARY}/avutil.lib
-    ${FFMPEG_LIBRARY}/swresample.lib
-    ${FFMPEG_LIBRARY}/swscale.lib
-)
-endif()
-
-# Set and Link TBB
-set(TBB_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/include")
-set(TBB_LIBRARY "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/lib")
-set(TBB_LIBRARY_DEBUG "${CMAKE_CURRENT_SOURCE_DIR}/vcpkg/installed/x64-windows-static/debug/lib")
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-  target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${TBB_LIBRARY_DEBUG}/tbb12_debug.lib
-    ${TBB_LIBRARY_DEBUG}/tbbmalloc_debug.lib
-  )
-else()
-  target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${TBB_LIBRARY}/tbb12.lib
-    ${TBB_LIBRARY}/tbbmalloc.lib
-)
-endif()
-
-# Set and Link CUDA
-set(CUDA_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/libraries/Cuda/include")
-set(CUDA_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/libraries/Cuda/lib/x64")
-target_include_directories(${PROJECT_NAME} PRIVATE ${CUDA_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${CUDA_LIBRARIES}/cudart_static.lib
-    ${CUDA_LIBRARIES}/cublas.lib
-)
-
-# Set and Link cuDNN
-set(CUDNN_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/libraries/cuDNN/include")
-set(CUDNN_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/libraries/cuDNN/lib/x64")
-target_include_directories(${PROJECT_NAME} PRIVATE ${CUDNN_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${CUDNN_LIBRARIES}/cudnn.lib
-)
-
-# Set and Link TensorRT
-set(TENSORRT_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/libraries/TensorRT/include")
-set(TENSORRT_LIBRARIES "${CMAKE_CURRENT_SOURCE_DIR}/libraries/TensorRT/lib")
-target_include_directories(${PROJECT_NAME} PRIVATE ${TENSORRT_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${TENSORRT_LIBRARIES}/nvinfer.lib
-    ${TENSORRT_LIBRARIES}/nvinfer_plugin.lib
-    # Add other TensorRT libraries as needed for loading, preprocessing, and inference
-)
+# FFmpeg
+pkg_check_modules(AVCODEC REQUIRED IMPORTED_TARGET libavcodec)
+pkg_check_modules(AVFORMAT REQUIRED IMPORTED_TARGET libavformat)
+pkg_check_modules(AVUTIL REQUIRED IMPORTED_TARGET libavutil)
+pkg_check_modules(AVFILTER REQUIRED IMPORTED_TARGET libavfilter)
+target_link_libraries(${PROJECT_NAME} PRIVATE PkgConfig::AVCODEC PkgConfig::AVFORMAT PkgConfig::AVUTIL PkgConfig::AVFILTER)

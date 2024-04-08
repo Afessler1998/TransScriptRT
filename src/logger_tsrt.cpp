@@ -22,7 +22,7 @@
  * @return std::string
 */
 static std::string get_executable_path() {
-    char buffer[MAX_PATH] = { 0 };
+    char buffer[PATH_MAX];
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     DWORD copied = 0;
     do {
@@ -85,7 +85,12 @@ void log_error(tsrt_status_code status_code,
 
     std::time_t time = std::chrono::system_clock::to_time_t(timestamp);
     struct tm timeinfo;
+    // if windows, use localtime_s, else use localtime_r
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     localtime_s(&timeinfo, &time);
+#elif __unix__
+    localtime_r(&time, &timeinfo);
+#endif
     std::stringstream ss;
     ss << std::put_time(&timeinfo, "%Y-%m-%d %H:%M:%S");
     std::string formatted_time = ss.str();
@@ -113,7 +118,11 @@ void log_info(const std::string& message,
 
     std::time_t time = std::chrono::system_clock::to_time_t(timestamp);
     struct tm timeinfo;
+#if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
     localtime_s(&timeinfo, &time);
+#elif __unix__
+    localtime_r(&time, &timeinfo);
+#endif
     std::stringstream ss;
     ss << std::put_time(&timeinfo, "%Y-%m-%d %H:%M:%S");
     std::string formatted_time = ss.str();
